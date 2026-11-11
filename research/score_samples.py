@@ -34,6 +34,7 @@ def main():
         return
     hits = {}
     totals = {}
+    results = {}
     thumbs = []
     for f in files:
         want = f.stem.split("_")[1]
@@ -47,6 +48,7 @@ def main():
             mean = tuple(sum(p[i] for p in bright) / len(bright) for i in range(3))
             got = classify(mean)
         ok = got == want
+        results[f.name] = {"want": want, "got": got, "coverage": round(coverage, 3), "ok": ok}
         totals[want] = totals.get(want, 0) + 1
         hits[want] = hits.get(want, 0) + (1 if ok else 0)
         print(f"{f.name}: want={want} got={got} coverage={coverage:.2f} "
@@ -58,6 +60,11 @@ def main():
     total_ok = sum(hits.values())
     total_n = sum(totals.values())
     print(f"TOTAL: {total_ok}/{total_n} color-correct")
+    import json as _json
+    summary = {"total_ok": total_ok, "total_n": total_n,
+               "per_color": {c: [hits[c], totals[c]] for c in sorted(totals)},
+               "files": results}
+    (d / "scores.json").write_text(_json.dumps(summary, indent=1))
     cols = 4
     rows = (len(thumbs) + cols - 1) // cols
     sheet = Image.new("RGB", (cols * 64, rows * 64), (10, 10, 10))
