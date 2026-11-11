@@ -84,6 +84,11 @@ class ScratchImageDiffusion(nn.Module):
         device = images.device
         batch = images.shape[0]
         cond = self.text.encode(captions, device)
+        # v3 (Origin run 4): classifier-free guidance training — drop the
+        # text conditioning on ~10% of samples so the sampler can steer
+        # generation toward the prompt by contrasting both predictions.
+        drop = torch.rand(batch, 1, device=device) < 0.1
+        cond = cond.masked_fill(drop, 0.0)
         t = torch.randint(0, self.steps, (batch,), device=device)
         noise = torch.randn_like(images)
         a_bar = self.alphas_bar[t].view(batch, 1, 1, 1)
