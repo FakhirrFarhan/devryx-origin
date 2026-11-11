@@ -1,25 +1,49 @@
 """Small educational text-conditioned diffusion baseline; all weights start randomly."""
+import re
+
 import torch
 from torch import nn
 
 
+def tokenize(text: str):
+    return re.findall(r"[a-z0-9]+", text.lower())
+
+
+def build_vocab(captions):
+    words = set()
+    for caption in captions:
+        words.update(tokenize(caption))
+    return sorted(words)
+
+
+DEFAULT_VOCAB = ["a", "amber", "background", "blue", "circle", "dark",
+                 "green", "on", "red", "square", "triangle"]
+
+
 class TextConditioner(nn.Module):
-    """Byte-level text embedding trained from scratch; no external tokenizer/model."""
-    def __init__(self, width: int = 128, max_bytes: int = 160):
+    """Text embedding trained from scratch; no external tokenizer/model.
+
+    v4 (Origin run 5): word-level embeddings. The v1-v3 byte-level encoder
+    blurred whole words together (runs 3-4 showed color words binding
+    unreliably). Words from the dataset's own captions form the vocabulary;
+    every embedding is learned from random initialization like the rest.
+    """
+    def __init__(self, width: int = 128, vocab=None, max_words: int = 24):
         super().__init__()
-        self.max_bytes = max_bytes
-        self.embedding = nn.Embedding(257, width, padding_idx=0)
-        # v2 (Origin run 3): mean+max pooling. Mean alone diluted the few
-        # content bytes (color, shape) among ~40 caption bytes; max pooling
-        # keeps the strongest byte features alive in the conditioning vector.
+        self.max_words = max_words
+        self.vocab = list(vocab) if vocab else list(DEFAULT_VOCAB)
+        self.word_to_id = {w: i + 2 for i, w in enumerate(self.vocab)}  # 0=pad, 1=unk
+        self.embedding = nn.Embedding(len(self.vocab) + 2, width, padding_idx=0)
+        # mean+max pooling (kept from v2): max keeps the strongest word
+        # features alive in the conditioning vector.
         self.proj = nn.Sequential(nn.Linear(width * 2, width), nn.SiLU(), nn.Linear(width, width))
 
     def encode(self, captions, device):
-        ids = torch.zeros(len(captions), self.max_bytes, dtype=torch.long, device=device)
+        ids = torch.zeros(len(captions), self.max_words, dtype=torch.long, device=device)
         for row, caption in enumerate(captions):
-            raw = list(caption.encode("utf-8")[: self.max_bytes])
-            if raw:
-                ids[row, :len(raw)] = torch.tensor([b + 1 for b in raw], device=device)
+            tokens = tokenize(caption)[: self.max_words]
+            for col, tok in enumerate(tokens):
+                ids[row, col] = self.word_to_id.get(tok, 1)
         emb = self.embedding(ids)
         mask = (ids != 0).float().unsqueeze(-1)
         mean_pooled = (emb * mask).sum(1) / mask.sum(1).clamp_min(1)
@@ -71,9 +95,9 @@ class FromScratchDenoiser(nn.Module):
 
 
 class ScratchImageDiffusion(nn.Module):
-    def __init__(self, width=64, cond_dim=128, steps=1000):
+    def __init__(self, width=64, cond_dim=128, steps=1000, vocab=None):
         super().__init__()
-        self.text = TextConditioner(cond_dim)
+        self.text = TextConditioner(cond_dim, vocab=vocab)
         self.denoiser = FromScratchDenoiser(width, cond_dim)
         self.steps = steps
         betas = torch.linspace(1e-4, 0.02, steps)

@@ -26,7 +26,10 @@ def main():
     if len(dataset) == 0:
         raise RuntimeError("Dataset is empty.")
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
-    model = ScratchImageDiffusion().to(device)  # random initialization; no checkpoint is loaded
+    # v4 (run 5): word vocabulary built from this dataset's own captions.
+    from .model import build_vocab
+    vocab = build_vocab([caption for _, caption in dataset])
+    model = ScratchImageDiffusion(vocab=vocab).to(device)  # random initialization; no checkpoint is loaded
     # v3 (Origin run 4): EMA shadow weights — a slowly averaged copy of the
     # model that typically samples far more cleanly than the raw weights.
     import copy
@@ -59,7 +62,7 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     target = out / "devryx_image_scratch.pt"
-    torch.save({"model": model.state_dict(), "model_ema": ema.state_dict(), "steps": step, "image_size": args.image_size}, target)
+    torch.save({"model": model.state_dict(), "model_ema": ema.state_dict(), "steps": step, "image_size": args.image_size, "vocab": vocab}, target)
     print(f"Saved our trained checkpoint to {target}")
 
 

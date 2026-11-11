@@ -18,8 +18,9 @@ def main():
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
     device = torch.device(args.device)
-    model = ScratchImageDiffusion().to(device)
     saved = torch.load(args.checkpoint, map_location=device, weights_only=False)
+    # v4: rebuild the model with the checkpoint's own word vocabulary.
+    model = ScratchImageDiffusion(vocab=saved.get("vocab")).to(device)
     # Prefer EMA weights when the checkpoint carries them (cleaner samples).
     model.load_state_dict(saved.get("model_ema") or saved["model"])
     model.eval()
