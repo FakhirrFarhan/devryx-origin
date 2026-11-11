@@ -15,8 +15,12 @@ def main():
     parser.add_argument("--size", type=int, default=64)
     parser.add_argument("--guidance", type=float, default=3.0,
                         help="Classifier-free guidance scale (v3, run 4). 1.0 = no guidance.")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Fix the sampling seed for reproducible multi-sample evaluation.")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = parser.parse_args()
+    if args.seed is not None:
+        torch.manual_seed(args.seed)
     device = torch.device(args.device)
     saved = torch.load(args.checkpoint, map_location=device, weights_only=False)
     # v4: rebuild the model with the checkpoint's own word vocabulary.
