@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: ./app/backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - devryx-private
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  frontend:
+    build:
+      context: ./app/frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Browser-facing API base URL should be https://api.YOUR_DOMAIN
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - devryx-private
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  devryx-private:
+    driver: bridge
+
+# Cloudflare Tunnel is intentionally not enabled automatically.
+# Configure its credentials and config first, then add a cloudflared service.

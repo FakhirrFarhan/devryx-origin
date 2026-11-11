@@ -1,0 +1,12 @@
+# Replace YOUR_DOMAIN. Tunnel credentials are mounted read-only.
+# Add this file to a cloudflared container only after creating the tunnel.
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: app.YOUR_DOMAIN
+    service: http://frontend:3000
+  - hostname: api.YOUR_DOMAIN
+    service: http://backend:8000
+  # Do not route sentinel until the separate owner-only app is implemented.
+  - service: http_status:404

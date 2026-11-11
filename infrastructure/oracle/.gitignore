@@ -1,0 +1,6 @@
+.env
+secrets/
+*.pem
+*.key
+*.json
+!cloudflared/config.yml
