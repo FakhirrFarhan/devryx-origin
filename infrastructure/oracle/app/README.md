@@ -1,0 +1,1 @@
+Place your existing frontend and backend projects here as `frontend/` and `backend/`. Add and test production Dockerfiles before running Compose. This starter intentionally does not fabricate Dockerfiles for an unreviewed application.
