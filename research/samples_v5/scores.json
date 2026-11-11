@@ -1,0 +1,92 @@
+{
+ "total_ok": 4,
+ "total_n": 12,
+ "per_color": {
+  "blue": [
+   2,
+   4
+  ],
+  "green": [
+   1,
+   4
+  ],
+  "red": [
+   1,
+   4
+  ]
+ },
+ "files": {
+  "sample_blue_11.png": {
+   "want": "blue",
+   "got": "blue",
+   "coverage": 0.889,
+   "ok": true
+  },
+  "sample_blue_22.png": {
+   "want": "blue",
+   "got": "blue",
+   "coverage": 0.608,
+   "ok": true
+  },
+  "sample_blue_33.png": {
+   "want": "blue",
+   "got": "EMPTY",
+   "coverage": 0.0,
+   "ok": false
+  },
+  "sample_blue_44.png": {
+   "want": "blue",
+   "got": "EMPTY",
+   "coverage": 0.0,
+   "ok": false
+  },
+  "sample_green_11.png": {
+   "want": "green",
+   "got": "green",
+   "coverage": 0.976,
+   "ok": true
+  },
+  "sample_green_22.png": {
+   "want": "green",
+   "got": "red",
+   "coverage": 0.743,
+   "ok": false
+  },
+  "sample_green_33.png": {
+   "want": "green",
+   "got": "EMPTY",
+   "coverage": 0.0,
+   "ok": false
+  },
+  "sample_green_44.png": {
+   "want": "green",
+   "got": "EMPTY",
+   "coverage": 0.0,
+   "ok": false
+  },
+  "sample_red_11.png": {
+   "want": "red",
+   "got": "amber",
+   "coverage": 0.771,
+   "ok": false
+  },
+  "sample_red_22.png": {
+   "want": "red",
+   "got": "red",
+   "coverage": 0.484,
+   "ok": true
+  },
+  "sample_red_33.png": {
+   "want": "red",
+   "got": "EMPTY",
+   "coverage": 0.0,
+   "ok": false
+  },
+  "sample_red_44.png": {
+   "want": "red",
+   "got": "EMPTY",
+   "coverage": 0.0,
+   "ok": false
+  }
+ }
+}
