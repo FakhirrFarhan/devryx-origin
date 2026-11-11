@@ -9,7 +9,10 @@ class TextConditioner(nn.Module):
         super().__init__()
         self.max_bytes = max_bytes
         self.embedding = nn.Embedding(257, width, padding_idx=0)
-        self.proj = nn.Sequential(nn.Linear(width, width), nn.SiLU(), nn.Linear(width, width))
+        # v2 (Origin run 3): mean+max pooling. Mean alone diluted the few
+        # content bytes (color, shape) among ~40 caption bytes; max pooling
+        # keeps the strongest byte features alive in the conditioning vector.
+        self.proj = nn.Sequential(nn.Linear(width * 2, width), nn.SiLU(), nn.Linear(width, width))
 
     def encode(self, captions, device):
         ids = torch.zeros(len(captions), self.max_bytes, dtype=torch.long, device=device)
@@ -17,9 +20,11 @@ class TextConditioner(nn.Module):
             raw = list(caption.encode("utf-8")[: self.max_bytes])
             if raw:
                 ids[row, :len(raw)] = torch.tensor([b + 1 for b in raw], device=device)
+        emb = self.embedding(ids)
         mask = (ids != 0).float().unsqueeze(-1)
-        pooled = (self.embedding(ids) * mask).sum(1) / mask.sum(1).clamp_min(1)
-        return self.proj(pooled)
+        mean_pooled = (emb * mask).sum(1) / mask.sum(1).clamp_min(1)
+        max_pooled = (emb + (mask - 1.0) * 1e9).max(1).values
+        return self.proj(torch.cat([mean_pooled, max_pooled], dim=1))
 
 
 class ResBlock(nn.Module):
@@ -44,6 +49,10 @@ class FromScratchDenoiser(nn.Module):
         super().__init__()
         self.time_mlp = nn.Sequential(nn.Linear(1, cond_dim), nn.SiLU(), nn.Linear(cond_dim, cond_dim))
         self.input = nn.Conv2d(3, width, 3, padding=1)
+        # v2 (Origin run 3): a conditioned block at full resolution, so the
+        # text/time signal shapes features at 64x64 too, not only at the
+        # bottleneck as in v1.
+        self.block_in = ResBlock(width, cond_dim)
         self.down = nn.Conv2d(width, width * 2, 4, stride=2, padding=1)
         self.mid1 = ResBlock(width * 2, cond_dim)
         self.mid2 = ResBlock(width * 2, cond_dim)
@@ -53,7 +62,7 @@ class FromScratchDenoiser(nn.Module):
     def forward(self, noisy, timestep, text_cond):
         t = timestep.float().view(-1, 1) / 1000.0
         cond = text_cond + self.time_mlp(t)
-        x = self.input(noisy)
+        x = self.block_in(self.input(noisy), cond)
         h = self.down(torch.nn.functional.silu(x))
         h = self.mid1(h, cond)
         h = self.mid2(h, cond)
