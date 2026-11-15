@@ -24,6 +24,14 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 SEEN_FILE = os.path.join(BASE, "origin_worker_seen.json")
 
+# Sampling speed (Origin speed lane, Nov 12): DDIM fast sampling step count
+# passed to research.image_model.sample. 50 steps scored 6/12 color-correct
+# on the run 6 checkpoint vs 4/12 for the full 1,000-step sampler, at about
+# 1/11 the wall time, with far fewer blank draws. Set to None (or >= 1000)
+# to fall back to full sampling. NOTE: takes effect on the worker's next
+# restart; the already-running worker keeps its current behavior until then.
+SAMPLE_STEPS = 50
+
 
 def load_tokens():
     toks = {}
@@ -101,11 +109,15 @@ def sample_image(prompt, job_id):
     for attempt in range(5):
         seed = 1000 + attempt * 137
         out_png = f"/tmp/origin_job_{job_id}_{attempt}.png"
+        sample_args = [os.path.join(BASE, ".research-venv", "bin", "python"),
+                       "-m", "research.image_model.sample",
+                       "--checkpoint", ckpt, "--prompt", prompt,
+                       "--seed", str(seed),
+                       "--out", out_png, "--device", "cpu"]
+        if SAMPLE_STEPS:
+            sample_args += ["--sample-steps", str(SAMPLE_STEPS)]
         r = subprocess.run(
-            [os.path.join(BASE, ".research-venv", "bin", "python"),
-             "-m", "research.image_model.sample",
-             "--checkpoint", ckpt, "--prompt", prompt, "--seed", str(seed),
-             "--out", out_png, "--device", "cpu"],
+            sample_args,
             cwd=BASE, capture_output=True, text=True, timeout=900, env=env)
         if r.returncode != 0:
             raise RuntimeError(f"sampler failed: {r.stderr.strip()[-200:]}")
